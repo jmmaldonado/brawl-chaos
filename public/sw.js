@@ -2,13 +2,7 @@ const CACHE_NAME = 'brawl-chaos-v1';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
-  '/src/main.tsx',
-  '/src/App.tsx',
-  '/src/index.css',
-  '/src/types.ts',
-  '/src/constants.ts',
-  '/src/components/GemGrabGame.tsx',
-  '/src/components/ShowdownGame.tsx',
+  '/manifest.json'
 ];
 
 
