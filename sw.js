@@ -2,8 +2,15 @@ const CACHE_NAME = 'brawl-chaos-v1';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
-  '/manifest.json'
+  '/src/main.tsx',
+  '/src/App.tsx',
+  '/src/index.css',
+  '/src/types.ts',
+  '/src/constants.ts',
+  '/src/components/GemGrabGame.tsx',
+  '/src/components/ShowdownGame.tsx',
 ];
+
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
