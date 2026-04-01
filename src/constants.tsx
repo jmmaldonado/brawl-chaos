@@ -59,7 +59,8 @@ export const BRAWLERS: Brawler[] = BRAWLER_NAMES.map((name, index) => {
     name,
     rarity,
     description: `Un brawler de tipo ${rarity} con habilidades únicas y un estilo de combate especializado.`,
-    image: `https://picsum.photos/seed/${name}/400/400`,
+    //image: `https://picsum.photos/seed/${name}/400/400`,
+    image: `https://api.dicebear.com/9.x/bottts/svg?seed=${name}`,
     stats: {
       hp: baseHp,
       damage: baseDamage,
