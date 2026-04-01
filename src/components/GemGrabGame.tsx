@@ -608,18 +608,6 @@ export const GemGrabGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLoss,
 
       <canvas ref={canvasRef} className="w-full h-full cursor-crosshair" />
 
-      {/* Controls Hint */}
-      <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-4 pointer-events-none opacity-40 hidden md:flex">
-        <div className="flex gap-3">
-          <div className="w-12 h-12 border-2 border-white rounded-xl flex items-center justify-center font-black text-xl">W</div>
-        </div>
-        <div className="flex gap-3">
-          <div className="w-12 h-12 border-2 border-white rounded-xl flex items-center justify-center font-black text-xl">A</div>
-          <div className="w-12 h-12 border-2 border-white rounded-xl flex items-center justify-center font-black text-xl">S</div>
-          <div className="w-12 h-12 border-2 border-white rounded-xl flex items-center justify-center font-black text-xl">D</div>
-        </div>
-        <span className="text-[10px] font-black uppercase tracking-[0.3em] mt-4">WASD: Mover | Click: Disparar | Click Derecho: SUPER</span>
-      </div>
     </div>
   );
 };
