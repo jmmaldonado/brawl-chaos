@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { ChevronLeft, Users, Info, Heart, Zap, Coins } from 'lucide-react';
+import { ChevronLeft, Users, Info, Heart, Coins, Swords, Move, Ruler } from 'lucide-react';
 import { Brawler, UserState } from '../../types';
 import { RARITY_COSTS, RARITY_COLORS } from '../../constants';
 
@@ -67,13 +67,13 @@ export const BrawlersView: React.FC<BrawlersViewProps> = ({
             <motion.div 
               key={brawler.id}
               whileHover={{ y: -5, scale: 1.02 }}
-              className={`relative rounded-[24px] overflow-hidden border-4 transition-all duration-500 group ${isSelected ? 'border-yellow-500 shadow-[0_0_30px_rgba(234,179,8,0.3)]' : 'border-white/5 bg-slate-900/50 hover:border-white/20'}`}
+              className={`relative rounded-[24px]  border-4 transition-all duration-500 group ${isSelected ? 'border-yellow-500 shadow-[0_0_30px_rgba(234,179,8,0.3)]' : 'border-white/5 bg-slate-900/50 hover:border-white/20'}`}
             >
               <div className="aspect-[4/5] relative">
                 <img 
                   src={brawler.image} 
                   alt={brawler.name} 
-                  className={`w-full h-full object-cover transition-all duration-1000 ${!isUnlocked ? 'grayscale brightness-50 blur-lg' : 'group-hover:scale-110'}`}
+                  className={`w-full h-full object-cover transition-all duration-1000 ${!isUnlocked ? 'grayscale brightness-50 blur-lg' : ''}`}
                   referrerPolicy="no-referrer"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/10 to-transparent" />
@@ -95,18 +95,26 @@ export const BrawlersView: React.FC<BrawlersViewProps> = ({
               <div className="p-3 flex flex-col gap-3">
                 <h3 className="text-lg font-black uppercase italic tracking-tighter truncate">{brawler.name}</h3>
                 
-                {isUnlocked && (
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="flex items-center gap-1.5 bg-white/5 p-1.5 rounded-lg border border-white/5">
-                      <Heart className="w-3 h-3 text-red-500 fill-red-500" />
-                      <span className="text-[10px] font-black">{brawler.stats.hp}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 bg-white/5 p-1.5 rounded-lg border border-white/5">
-                      <Zap className="w-3 h-3 text-orange-500 fill-orange-500" />
-                      <span className="text-[10px] font-black">{brawler.stats.damage}</span>
-                    </div>
+              
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="flex items-center gap-1.5 bg-white/5 p-1.5 rounded-lg border border-white/5">
+                    <Heart className="w-3 h-3 text-red-500 fill-red-500" />
+                    <span className="text-[10px] font-black">{brawler.stats.hp}</span>
                   </div>
-                )}
+                  <div className="flex items-center gap-1.5 bg-white/5 p-1.5 rounded-lg border border-white/5">
+                    <Swords className="w-3 h-3 text-orange-500 fill-orange-500" />
+                    <span className="text-[10px] font-black">{brawler.stats.damage}</span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 bg-white/5 p-1.5 rounded-lg border border-white/5">
+                    <Move className="w-3 h-3 text-blue-500 fill-blue-500" />
+                    <span className="text-[10px] font-black">{brawler.stats.speed.toFixed(1)}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 bg-white/5 p-1.5 rounded-lg border border-white/5">
+                    <Ruler className="w-3 h-3 text-green-500 fill-green-500" />
+                    <span className="text-[10px] font-black">{brawler.stats.range.toFixed(1)}</span>
+                  </div>
+                </div>
 
                 <div className="flex flex-col gap-2">
                   {!isUnlocked ? (
