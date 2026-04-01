@@ -53,11 +53,12 @@ export default function App() {
 
   const {
     isOpening: isOpeningDrop,
+    isShuffling: isShufflingDrop,
     dropTier,
     dropAttempts,
     dropResult,
     startOpening: startDropSequence,
-    evolveDrop,
+    rollDrop,
     finishDrop,
     closeDrop
   } = useStarrDrop(user, addReward);
@@ -203,10 +204,11 @@ export default function App() {
 
       <StarrDropModal 
         isOpening={isOpeningDrop}
+        isShuffling={isShufflingDrop}
         dropTier={dropTier}
         dropAttempts={dropAttempts}
         dropResult={dropResult}
-        onEvolve={evolveDrop}
+        onRoll={rollDrop}
         onFinish={finishDrop}
         onClose={closeDrop}
       />
