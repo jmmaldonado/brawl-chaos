@@ -4,6 +4,7 @@ import { Brawler, GameMode } from './types';
 import { BRAWLERS, GAME_MODES } from './constants';
 import { GemGrabGame } from './components/GemGrabGame';
 import { ShowdownGame } from './components/ShowdownGame';
+import { preloadAvatars } from './utils/avatarCache';
 
 // Hooks
 import { useUser } from './hooks/useUser';
@@ -43,6 +44,11 @@ export default function App() {
     setSelectedBrawlerId,
     setUser
   } = useUser();
+
+  useEffect(() => {
+    // Preload first 20 brawlers to the cache
+    preloadAvatars(BRAWLERS.slice(0, 20).map(b => b.name));
+  }, []);
 
   const {
     isOpening: isOpeningDrop,

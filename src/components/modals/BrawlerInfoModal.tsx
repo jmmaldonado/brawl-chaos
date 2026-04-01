@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, Heart, Swords, Move, Ruler } from 'lucide-react';
 import { Brawler } from '../../types';
 import { RARITY_COLORS } from '../../constants';
+import { CachedAvatar } from '../common/CachedAvatar';
 
 interface BrawlerInfoModalProps {
   brawler: Brawler | null;
@@ -35,8 +36,8 @@ export const BrawlerInfoModal: React.FC<BrawlerInfoModalProps> = ({
             </button>
             
             <div className="flex flex-col items-center gap-4">
-              <img 
-                src={brawler.image} 
+              <CachedAvatar 
+                name={brawler.name} 
                 alt={brawler.name} 
                 className="w-40 h-40 object-cover rounded-[24px] border-4 border-white/10 shadow-2xl"
                 referrerPolicy="no-referrer"

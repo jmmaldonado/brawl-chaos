@@ -1,7 +1,8 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { ChevronRight, Play, Users, Package } from 'lucide-react';
-import { Brawler, GameMode, UserState } from '../../types';
+import { Brawler, UserState } from '../../types';
+import { CachedAvatar } from '../common/CachedAvatar';
 
 interface HomeViewProps {
   selectedBrawler: Brawler;
@@ -40,8 +41,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
           transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
           className="relative z-0"
         >
-          <img 
-            src={selectedBrawler.image}
+          <CachedAvatar 
+            name={selectedBrawler.name}
             alt={selectedBrawler.name}
             className="w-40 h-40 object-cover rounded-[24px] border-4 border-white/5 shadow-[0_24px_48px_-12px_rgba(0,0,0,0.6)]"
             referrerPolicy="no-referrer"

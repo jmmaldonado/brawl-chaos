@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { ChevronLeft, Users, Info, Heart, Coins, Swords, Move, Ruler } from 'lucide-react';
 import { Brawler, UserState } from '../../types';
 import { RARITY_COSTS, RARITY_COLORS } from '../../constants';
+import { CachedAvatar } from '../common/CachedAvatar';
 
 interface BrawlersViewProps {
   user: UserState;
@@ -86,8 +87,8 @@ export const BrawlersView: React.FC<BrawlersViewProps> = ({
               className={`relative rounded-[24px]  border-4 transition-all duration-500 group ${isSelected ? 'border-yellow-500 shadow-[0_0_30px_rgba(234,179,8,0.3)]' : 'border-white/5 bg-slate-900/50 hover:border-white/20'}`}
             >
               <div className="aspect-[4/5] relative">
-                <img 
-                  src={brawler.image} 
+                <CachedAvatar 
+                  name={brawler.name} 
                   alt={brawler.name} 
                   className={`w-full h-full object-cover transition-all duration-1000 ${!isUnlocked ? 'grayscale brightness-50 blur-lg' : ''}`}
                   referrerPolicy="no-referrer"

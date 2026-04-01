@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Star, Coins, CheckCircle2 } from 'lucide-react';
 import { DropTier, Brawler } from '../../types';
 import { RARITY_COLORS } from '../../constants';
+import { CachedAvatar } from '../common/CachedAvatar';
 
 interface StarrDropModalProps {
   isOpening: boolean;
@@ -104,8 +105,8 @@ export const StarrDropModal: React.FC<StarrDropModalProps> = ({
                 ) : (
                   <div className="relative z-10 flex flex-col items-center gap-4">
                     <div className="relative">
-                      <img 
-                        src={(dropResult.value as Brawler).image} 
+                      <CachedAvatar 
+                        name={(dropResult.value as Brawler).name} 
                         alt={(dropResult.value as Brawler).name}
                         className="w-48 h-48 object-cover rounded-[48px] border-8 border-yellow-500 shadow-2xl"
                         referrerPolicy="no-referrer"

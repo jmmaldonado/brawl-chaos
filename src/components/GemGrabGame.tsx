@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Brawler } from '../types';
 import { BRAWLERS } from '../constants';
+import { getAvatar } from '../utils/avatarCache';
 import { Star, X } from 'lucide-react';
 
 interface GameProps {
@@ -72,7 +73,7 @@ export const GemGrabGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLoss,
       
       for (const b of toLoad) {
         const img = new Image();
-        img.src = b.image;
+        img.src = await getAvatar(b.name);
         img.referrerPolicy = 'no-referrer';
         await new Promise(resolve => {
           img.onload = resolve;
