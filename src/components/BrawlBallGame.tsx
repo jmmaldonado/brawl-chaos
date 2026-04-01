@@ -30,6 +30,8 @@ interface Ball {
   vy: number;
   radius: number;
   ownerId: string | null;
+  lastOwnerId: string | null;
+  kickTimer: number;
 }
 
 interface Projectile {
@@ -107,7 +109,7 @@ export const BrawlBallGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLos
       { x: width * 0.8, y: height * 0.75, radius: 35, color: '#ef4444', hp: 4000, maxHp: 4000, team: 'enemy', id: 'enemy-2', respawnTimer: 0 },
     ];
 
-    const ball: Ball = { x: width / 2, y: height / 2, vx: 0, vy: 0, radius: 20, ownerId: null };
+    const ball: Ball = { x: width / 2, y: height / 2, vx: 0, vy: 0, radius: 20, ownerId: null, lastOwnerId: null, kickTimer: 0 };
     const projectiles: Projectile[] = [];
     const particles: { x: number, y: number, vx: number, vy: number, life: number, color: string }[] = [];
 
@@ -120,6 +122,7 @@ export const BrawlBallGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLos
       enemies[0].x = width * 0.8; enemies[0].y = height / 4; enemies[0].hp = enemies[0].maxHp;
       enemies[1].x = width * 0.8; enemies[1].y = height * 0.75; enemies[1].hp = enemies[1].maxHp;
       ball.x = width / 2; ball.y = height / 2; ball.vx = 0; ball.vy = 0; ball.ownerId = null;
+      ball.lastOwnerId = null; ball.kickTimer = 0;
       projectiles.length = 0;
     };
 
@@ -131,28 +134,41 @@ export const BrawlBallGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLos
     
     const shootAt = (tx: number, ty: number, isSuper = false) => {
       if (player.respawnTimer > 0) return;
+      
+      const actuallySuper = isSuper || (superRequested.current && superChargeRef.current >= 100);
+
       if (ball.ownerId === player.id) {
         // Kick ball instead
         const angle = Math.atan2(ty - player.y, tx - player.x);
-        ball.vx = Math.cos(angle) * (isSuper ? 25 : 18);
-        ball.vy = Math.sin(angle) * (isSuper ? 25 : 18);
+        ball.vx = Math.cos(angle) * (actuallySuper ? 25 : 18);
+        ball.vy = Math.sin(angle) * (actuallySuper ? 25 : 18);
         ball.ownerId = null;
+        ball.lastOwnerId = player.id;
+        ball.kickTimer = 20; // 20 frames of no-pickup for the kicker
+
+        if (actuallySuper) {
+          setSuperCharge(0);
+          superRequested.current = false;
+        }
         return;
       }
 
       const now = Date.now();
-      if (!isSuper && now - lastShot.current < 400) return;
-      if (isSuper && superChargeRef.current < 100) return;
+      if (!actuallySuper && now - lastShot.current < 400) return;
+      if (actuallySuper && superChargeRef.current < 100) return;
       
-      if (!isSuper) lastShot.current = now;
-      else setSuperCharge(0);
+      if (!actuallySuper) lastShot.current = now;
+      else {
+        setSuperCharge(0);
+        superRequested.current = false;
+      }
 
       const angle = Math.atan2(ty - player.y, tx - player.x);
       projectiles.push({
         x: player.x, y: player.y,
         vx: Math.cos(angle) * 12, vy: Math.sin(angle) * 12,
-        damage: isSuper ? playerBrawler.stats.damage * 2.5 : playerBrawler.stats.damage,
-        team: 'player', isSuper
+        damage: actuallySuper ? playerBrawler.stats.damage * 2.5 : playerBrawler.stats.damage,
+        team: 'player', isSuper: actuallySuper
       });
     };
 
@@ -294,11 +310,18 @@ export const BrawlBallGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLos
         }
 
         // Ball pick up
+        if (ball.kickTimer > 0) ball.kickTimer--;
+
         allEntities.forEach(e => {
           if (e.respawnTimer <= 0) { // Can't pick up if "dead" respawning
+            // Skip if it's the last owner and timer is active
+            if (e.id === ball.lastOwnerId && ball.kickTimer > 0) return;
+
             const dist = Math.hypot(e.x - ball.x, e.y - ball.y);
             if (dist < e.radius + ball.radius) {
               ball.ownerId = e.id;
+              ball.lastOwnerId = null;
+              ball.kickTimer = 0;
             }
           }
         });
@@ -349,6 +372,8 @@ export const BrawlBallGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLos
             ball.vx = Math.cos(angle) * 15;
             ball.vy = Math.sin(angle) * 15;
             ball.ownerId = null;
+            ball.lastOwnerId = ai.id;
+            ball.kickTimer = 20;
           }
         } else if (ball.ownerId === null) {
           // Seek ball
