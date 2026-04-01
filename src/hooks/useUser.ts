@@ -56,7 +56,10 @@ export function useUser() {
       dailyDropsRemaining: prev.dailyDropsRemaining + dropsToAdd,
       credits: prev.credits + 20 // Bonus credits for win
     }));
+
+    return { trophies: 8, drops: dropsToAdd, credits: 20 };
   };
+
 
   const awardLossTrophies = (kills: number = 0) => {
     const killDrops = Math.floor(kills / 5);
@@ -66,7 +69,9 @@ export function useUser() {
       winStreak: 0,
       dailyDropsRemaining: prev.dailyDropsRemaining + killDrops
     }));
+    return { trophies: -4, drops: killDrops, credits: 0 };
   };
+
 
   const awardShowdownResults = (rank: number, kills: number = 0) => {
     const trophyChange = rank <= 4 ? (10 - rank * 2) : -rank;
@@ -95,7 +100,10 @@ export function useUser() {
       dailyDropsRemaining: prev.dailyDropsRemaining + dropsToAdd,
       winStreak: newStreak
     }));
+
+    return { trophies: trophyChange, drops: dropsToAdd, credits: creditReward };
   };
+
 
   const claimMilestone = (trophies: number, reward: number) => {
     if (user.trophies >= trophies && !user.claimedMilestones.includes(trophies)) {

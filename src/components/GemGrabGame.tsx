@@ -42,7 +42,13 @@ export const GemGrabGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLoss,
   const [gameState, setGameState] = useState<'playing' | 'won' | 'lost'>('playing');
   const [playerGems, setPlayerGems] = useState(0);
   const [enemyGems, setEnemyGems] = useState(0);
-  const [countdown, setCountdown] = useState<number | null>(null);
+  const [countdown, _setCountdown] = useState<number | null>(null);
+  const countdownRef = useRef<number | null>(null);
+  const countdownStartTime = useRef<number | null>(null);
+  const setCountdown = (val: number | null) => {
+    countdownRef.current = val;
+    _setCountdown(val);
+  };
   const [superCharge, _setSuperCharge] = useState(0);
   const superChargeRef = useRef(0);
   const setSuperCharge = (val: number) => {
@@ -51,6 +57,8 @@ export const GemGrabGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLoss,
   };
   const [kills, setKills] = useState(0);
   const killsRef = useRef(0);
+
+
 
   const keys = useRef<Set<string>>(new Set());
   const mousePos = useRef({ x: 0, y: 0 });
@@ -145,10 +153,18 @@ export const GemGrabGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLoss,
             touchId: touch.identifier 
           };
         } else {
+          // If the touch was NOT on a button (already handled by the target.closest check)
+          // but we want to be extra safe for elements that might not be detected as buttons
+          const elementUnderTouch = document.elementFromPoint(touch.clientX, touch.clientY);
+          if (elementUnderTouch?.closest('button') || elementUnderTouch?.closest('.hud-element') || elementUnderTouch?.closest('.hud-button')) {
+            continue;
+          }
+
           // Shoot if touch is on the right side or if joystick is already active elsewhere
           mousePos.current = { x: touch.clientX, y: touch.clientY };
           shootAt(touch.clientX, touch.clientY);
         }
+
       }
     };
 
@@ -408,12 +424,31 @@ export const GemGrabGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLoss,
       }
 
       const totalEnemyGems = enemies.reduce((acc, curr) => acc + curr.gems, 0);
-      if (player.gems >= 10 || totalEnemyGems >= 10) {
-        if (countdown === null) setCountdown(15);
+      const isPlayerWinning = player.gems >= 10 && player.gems > totalEnemyGems;
+      const isEnemyWinning = totalEnemyGems >= 10 && totalEnemyGems > player.gems;
+      
+      if (isPlayerWinning || isEnemyWinning) {
+        if (countdownStartTime.current === null) {
+          countdownStartTime.current = Date.now();
+          setCountdown(15);
+        } else {
+          const now = Date.now();
+          const elapsed = Math.floor((now - (countdownStartTime.current as number)) / 1000);
+          const currentCount = Math.max(0, 15 - elapsed);
+          
+          if (currentCount !== countdownRef.current) {
+            setCountdown(currentCount);
+          }
+        }
       } else {
-        setCountdown(null);
+        countdownStartTime.current = null;
+        if (countdownRef.current !== null) {
+          setCountdown(null);
+        }
       }
     };
+
+
 
     const draw = () => {
       ctx.clearRect(0, 0, width, height);
@@ -540,11 +575,9 @@ export const GemGrabGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLoss,
   }, [gameState, playerBrawler]); // Removed countdown to prevent game reset every second
 
   useEffect(() => {
-    if (countdown !== null && countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-      return () => clearTimeout(timer);
-    } else if (countdown === 0) {
+    if (countdown === 0) {
       if (playerGems >= enemyGems) {
+
         setGameState('won');
         onWin(killsRef.current);
       } else {
@@ -579,12 +612,18 @@ export const GemGrabGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLoss,
       {/* Super Button (Mobile) */}
       <div className="absolute bottom-8 right-8 flex flex-col gap-4 z-[110]">
         <div className="relative">
-          <div className="absolute inset-0 bg-yellow-400/20 blur-xl rounded-full animate-pulse" />
+          <div className="absolute inset-0 bg-yellow-400/20 blur-xl rounded-full animate-pulse pointer-events-none" />
+
           <button 
-            className={`w-16 h-16 rounded-full border-4 flex items-center justify-center transition-all active:scale-90 ${superCharge >= 100 ? 'bg-yellow-500 border-yellow-300 shadow-[0_0_20px_rgba(234,179,8,0.5)]' : 'bg-slate-800 border-white/10 opacity-50'}`}
-            onPointerDown={(e) => { e.stopPropagation(); if (superCharge >= 100) superRequested.current = true; }}
+            className={`hud-button w-16 h-16 rounded-full border-4 flex items-center justify-center transition-all active:scale-90 ${superCharge >= 100 ? 'bg-yellow-500 border-yellow-300 shadow-[0_0_20px_rgba(234,179,8,0.5)]' : 'bg-slate-800 border-white/10 opacity-50'}`}
+            onPointerDown={(e) => { 
+                e.stopPropagation(); 
+                if (superCharge >= 100) {
+                    superRequested.current = true;
+                }
+            }}
           >
-            <Star className={`w-8 h-8 ${superCharge >= 100 ? 'text-slate-950 fill-current' : 'text-white/30'}`} />
+            <Star className={`w-8 h-8 pointer-events-none ${superCharge >= 100 ? 'text-slate-950 fill-current' : 'text-white/30'}`} />
           </button>
           {/* Super Charge Ring */}
           <svg className="absolute inset-0 -rotate-90 w-16 h-16 pointer-events-none">

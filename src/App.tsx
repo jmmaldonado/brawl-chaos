@@ -68,6 +68,7 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [matchResult, setMatchResult] = useState<'win' | 'loss' | null>(null);
   const [lastRank, setLastRank] = useState<number | null>(null);
+  const [rewards, setRewards] = useState<{ trophies: number, drops: number, credits: number } | null>(null);
   const [showBrawlerInfo, setShowBrawlerInfo] = useState<Brawler | null>(null);
 
   const filteredBrawlers = BRAWLERS.filter(b => 
@@ -79,23 +80,27 @@ export default function App() {
   const onGameWin = (kills: number = 0) => {
     setLastRank(null);
     setMatchResult('win');
-    awardWinTrophies(kills);
+    const r = awardWinTrophies(kills);
+    setRewards(r);
     setView('home');
   };
 
   const onGameLoss = (kills: number = 0) => {
     setLastRank(null);
     setMatchResult('loss');
-    awardLossTrophies(kills);
+    const r = awardLossTrophies(kills);
+    setRewards(r);
     setView('home');
   };
 
   const onShowdownFinish = (rank: number, kills: number = 0) => {
     setLastRank(rank);
     setMatchResult(rank <= 4 ? 'win' : 'loss');
-    awardShowdownResults(rank, kills);
+    const r = awardShowdownResults(rank, kills);
+    setRewards(r);
     setView('home');
   };
+
 
   const handleStartDrop = () => {
     if (user.dailyDropsRemaining <= 0) return;
@@ -194,13 +199,16 @@ export default function App() {
       <MatchResultModal 
         matchResult={matchResult}
         lastRank={lastRank}
+        rewards={rewards}
         onContinue={() => {
           if (matchResult === 'win') {
             handleStartDrop();
           }
           setMatchResult(null);
+          setRewards(null);
         }}
       />
+
 
       <StarrDropModal 
         isOpening={isOpeningDrop}

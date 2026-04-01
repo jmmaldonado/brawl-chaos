@@ -559,6 +559,12 @@ export const ShowdownGame: React.FC<GameProps> = ({ playerBrawler, onFinish, onE
             touchId: touch.identifier 
           };
         } else {
+          // Extra safety check for UI elements
+          const elementUnderTouch = document.elementFromPoint(touch.clientX, touch.clientY);
+          if (elementUnderTouch?.closest('button') || elementUnderTouch?.closest('.hud-element') || elementUnderTouch?.closest('.hud-button')) {
+            continue;
+          }
+
           mousePos.current = { x: touch.clientX + player.x - width / 2, y: touch.clientY + player.y - height / 2 };
           shootAt(mousePos.current.x, mousePos.current.y);
         }
@@ -634,10 +640,10 @@ export const ShowdownGame: React.FC<GameProps> = ({ playerBrawler, onFinish, onE
           </svg>
           <div className="absolute inset-0 flex items-center justify-center">
             <button 
-              className={`w-14 h-14 rounded-full border-4 flex items-center justify-center transition-all active:scale-90 ${superCharge >= 100 ? 'bg-yellow-500 border-yellow-300 shadow-[0_0_20px_rgba(234,179,8,0.5)]' : 'bg-slate-800 border-white/10 opacity-50'}`}
+              className={`hud-button w-14 h-14 rounded-full border-4 flex items-center justify-center transition-all active:scale-90 ${superCharge >= 100 ? 'bg-yellow-500 border-yellow-300 shadow-[0_0_20px_rgba(234,179,8,0.5)]' : 'bg-slate-800 border-white/10 opacity-50'}`}
               onPointerDown={(e) => { e.stopPropagation(); if (superCharge >= 100) superRequested.current = true; }}
             >
-              <Star className={`w-7 h-7 ${superCharge >= 100 ? 'text-slate-950 fill-current' : 'text-white/30'}`} />
+              <Star className={`w-7 h-7 pointer-events-none ${superCharge >= 100 ? 'text-slate-950 fill-current' : 'text-white/30'}`} />
             </button>
           </div>
         </div>
