@@ -4,6 +4,7 @@ import { Brawler, GameMode } from './types';
 import { BRAWLERS, GAME_MODES } from './constants';
 import { GemGrabGame } from './components/GemGrabGame';
 import { ShowdownGame } from './components/ShowdownGame';
+import { BrawlBallGame } from './components/BrawlBallGame';
 import { preloadAvatars } from './utils/avatarCache';
 
 // Hooks
@@ -169,6 +170,15 @@ export default function App() {
             <ShowdownGame 
               playerBrawler={selectedBrawler}
               onFinish={onShowdownFinish}
+              onExit={() => setView('home')}
+            />
+          )}
+
+          {view === 'game' && selectedMode === 'Balón Brawl' && (
+            <BrawlBallGame 
+              playerBrawler={selectedBrawler}
+              onWin={onGameWin}
+              onLoss={onGameLoss}
               onExit={() => setView('home')}
             />
           )}
