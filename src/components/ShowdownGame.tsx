@@ -6,7 +6,7 @@ import { Star, X, Skull, Trophy } from 'lucide-react';
 
 interface GameProps {
   playerBrawler: Brawler;
-  onFinish: (rank: number) => void;
+  onFinish: (rank: number, kills: number) => void;
   onExit: () => void;
 }
 
@@ -74,6 +74,8 @@ export const ShowdownGame: React.FC<GameProps> = ({ playerBrawler, onFinish, onE
     }
   };
   const [gasRadius, setGasRadius] = useState(2000);
+  const [kills, setKills] = useState(0);
+  const killsRef = useRef(0);
   
   const keys = useRef<Set<string>>(new Set());
   const mousePos = useRef({ x: 0, y: 0 });
@@ -338,6 +340,8 @@ export const ShowdownGame: React.FC<GameProps> = ({ playerBrawler, onFinish, onE
               if (!p.isSuper) setSuperCharge(prev => Math.min(100, prev + 15));
               projectiles.splice(i, 1);
               if (e.hp <= 0) {
+                setKills(prev => prev + 1);
+                killsRef.current++;
                 powerCubes.push({ x: e.x, y: e.y, radius: 15 });
                 setRemaining(prev => prev - 1);
               }
@@ -385,7 +389,7 @@ export const ShowdownGame: React.FC<GameProps> = ({ playerBrawler, onFinish, onE
         const aliveCount = enemies.filter(e => e.hp > 0).length + 1;
         setRank(aliveCount);
         setGameState('finished');
-        setTimeout(() => onFinish(aliveCount), 1500);
+        setTimeout(() => onFinish(aliveCount, killsRef.current), 1500);
       }
       
       const aliveEnemies = enemies.filter(e => e.hp > 0).length;
@@ -393,7 +397,7 @@ export const ShowdownGame: React.FC<GameProps> = ({ playerBrawler, onFinish, onE
         finishCalled.current = true;
         setRank(1);
         setGameState('finished');
-        setTimeout(() => onFinish(1), 1500);
+        setTimeout(() => onFinish(1, killsRef.current), 1500);
       }
 
       setRemaining(aliveEnemies + 1);

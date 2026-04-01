@@ -6,8 +6,8 @@ import { Star, X } from 'lucide-react';
 
 interface GameProps {
   playerBrawler: Brawler;
-  onWin: () => void;
-  onLoss: () => void;
+  onWin: (kills: number) => void;
+  onLoss: (kills: number) => void;
   onExit: () => void;
 }
 
@@ -49,6 +49,8 @@ export const GemGrabGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLoss,
     superChargeRef.current = val;
     _setSuperCharge(val);
   };
+  const [kills, setKills] = useState(0);
+  const killsRef = useRef(0);
 
   const keys = useRef<Set<string>>(new Set());
   const mousePos = useRef({ x: 0, y: 0 });
@@ -328,8 +330,10 @@ export const GemGrabGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLoss,
 
               if (!p.isSuper) projectiles.splice(i, 1);
               
-              if (e.hp <= 0) {
-                for (let j = 0; j < e.gems; j++) {
+                if (e.hp <= 0) {
+                  setKills(prev => prev + 1);
+                  killsRef.current++;
+                  for (let j = 0; j < e.gems; j++) {
                   gems.push({ x: e.x + (Math.random() - 0.5) * 60, y: e.y + (Math.random() - 0.5) * 60, radius: 12 });
                 }
                 e.gems = 0;
@@ -542,10 +546,10 @@ export const GemGrabGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLoss,
     } else if (countdown === 0) {
       if (playerGems >= enemyGems) {
         setGameState('won');
-        onWin();
+        onWin(killsRef.current);
       } else {
         setGameState('lost');
-        onLoss();
+        onLoss(killsRef.current);
       }
     }
   }, [countdown, playerGems, enemyGems, onWin, onLoss]);

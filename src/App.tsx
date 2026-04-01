@@ -76,24 +76,24 @@ export default function App() {
 
   const selectedBrawler = BRAWLERS.find(b => b.id === user.selectedBrawlerId) || BRAWLERS[0];
 
-  const onGameWin = () => {
+  const onGameWin = (kills: number = 0) => {
     setLastRank(null);
     setMatchResult('win');
-    awardWinTrophies();
+    awardWinTrophies(kills);
     setView('home');
   };
 
-  const onGameLoss = () => {
+  const onGameLoss = (kills: number = 0) => {
     setLastRank(null);
     setMatchResult('loss');
-    awardLossTrophies();
+    awardLossTrophies(kills);
     setView('home');
   };
 
-  const onShowdownFinish = (rank: number) => {
+  const onShowdownFinish = (rank: number, kills: number = 0) => {
     setLastRank(rank);
     setMatchResult(rank <= 4 ? 'win' : 'loss');
-    awardShowdownResults(rank);
+    awardShowdownResults(rank, kills);
     setView('home');
   };
 

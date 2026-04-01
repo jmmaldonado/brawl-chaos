@@ -5,11 +5,12 @@ import { BRAWLERS, RARITY_COSTS } from '../constants';
 const INITIAL_USER: UserState = {
   credits: 0,
   unlockedBrawlers: [BRAWLERS[0].id],
-  dailyDropsRemaining: 50,
+  dailyDropsRemaining: 5,
   lastLogin: new Date().toDateString(),
   selectedBrawlerId: BRAWLERS[0].id,
   trophies: 0,
   claimedMilestones: [],
+  winStreak: 0,
 };
 
 export function useUser() {
@@ -28,28 +29,71 @@ export function useUser() {
     if (user.lastLogin !== today) {
       setUser(prev => ({
         ...prev,
-        dailyDropsRemaining: 50,
+        dailyDropsRemaining: 5,
         lastLogin: today,
+        winStreak: 0, // Reset streak daily too? Or keep it? Let's keep it but reset drops
       }));
     }
   }, [user.lastLogin]);
 
-  const awardWinTrophies = () => {
-    setUser(prev => ({ ...prev, trophies: prev.trophies + 8 }));
+  const awardWinTrophies = (kills: number = 0) => {
+    const newStreak = (user.winStreak || 0) + 1;
+    let dropsToAdd = 2; // Victoria base
+    
+    // Streak reward: Every 3 wins, +5 drops
+    if (newStreak > 0 && newStreak % 3 === 0) {
+      dropsToAdd += 5;
+    }
+
+    // Kills reward: +1 drop every 5 kills
+    const killDrops = Math.floor(kills / 5);
+    dropsToAdd += killDrops;
+
+    setUser(prev => ({ 
+      ...prev, 
+      trophies: prev.trophies + 8,
+      winStreak: newStreak,
+      dailyDropsRemaining: prev.dailyDropsRemaining + dropsToAdd,
+      credits: prev.credits + 20 // Bonus credits for win
+    }));
   };
 
-  const awardLossTrophies = () => {
-    setUser(prev => ({ ...prev, trophies: Math.max(0, prev.trophies - 4) }));
+  const awardLossTrophies = (kills: number = 0) => {
+    const killDrops = Math.floor(kills / 5);
+    setUser(prev => ({ 
+      ...prev, 
+      trophies: Math.max(0, prev.trophies - 4),
+      winStreak: 0,
+      dailyDropsRemaining: prev.dailyDropsRemaining + killDrops
+    }));
   };
 
-  const awardShowdownResults = (rank: number) => {
+  const awardShowdownResults = (rank: number, kills: number = 0) => {
     const trophyChange = rank <= 4 ? (10 - rank * 2) : -rank;
     const creditReward = Math.max(0, 50 - rank * 5);
+    
+    let dropsToAdd = 0;
+    if (rank === 1) dropsToAdd = 3;
+    else if (rank <= 3) dropsToAdd = 2;
+    else if (rank <= 4) dropsToAdd = 1;
+
+    // Kills reward: +1 drop every 2 kills in Showdown (harder to kill)
+    const killDrops = Math.floor(kills / 2);
+    dropsToAdd += killDrops;
+
+    const isWin = rank <= 4;
+    const newStreak = isWin ? (user.winStreak || 0) + 1 : 0;
+    
+    if (isWin && newStreak > 0 && newStreak % 3 === 0) {
+      dropsToAdd += 5;
+    }
     
     setUser(prev => ({ 
       ...prev, 
       trophies: Math.max(0, prev.trophies + trophyChange),
-      credits: prev.credits + creditReward
+      credits: prev.credits + creditReward,
+      dailyDropsRemaining: prev.dailyDropsRemaining + dropsToAdd,
+      winStreak: newStreak
     }));
   };
 
@@ -95,7 +139,7 @@ export function useUser() {
 
   return {
     user,
-    setUser, // Exporting for complex updates
+    setUser,
     awardWinTrophies,
     awardLossTrophies,
     awardShowdownResults,

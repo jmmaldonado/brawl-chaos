@@ -24,6 +24,7 @@ export interface UserState {
   selectedBrawlerId: string;
   trophies: number;
   claimedMilestones: number[];
+  winStreak: number;
 }
 
 export type GameMode = 'Noqueo' | 'Supervivencia' | 'Atrapagemas' | 'Balón Brawl';

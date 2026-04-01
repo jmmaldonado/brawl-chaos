@@ -96,6 +96,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <div className="flex flex-col items-center relative z-10">
               <span className="font-black uppercase text-[10px] tracking-widest">Caída Caótica</span>
               <span className="text-[8px] font-black text-purple-400 uppercase tracking-widest">{user.dailyDropsRemaining} DISPONIBLES</span>
+              {user.winStreak > 0 && (
+                <div className="absolute -top-6 -right-6 bg-yellow-500 text-slate-950 text-[10px] font-black px-2 py-1 rounded-lg rotate-12 shadow-xl animate-pulse">
+                  🔥 {user.winStreak} RACHA
+                </div>
+              )}
             </div>
           </button>
         </div>

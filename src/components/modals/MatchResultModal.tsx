@@ -68,7 +68,7 @@ export const MatchResultModal: React.FC<MatchResultModalProps> = ({
                 <div className="bg-slate-800/50 p-4 rounded-2xl border border-white/5">
                   <div className="flex items-center justify-center gap-2">
                     <Package className="w-5 h-5 text-purple-400" />
-                    <span className="text-lg font-black uppercase italic">Bonus: 1 Caída</span>
+                    <span className="text-lg font-black uppercase italic">Bonus: +2 Caídas</span>
                   </div>
                 </div>
               )}

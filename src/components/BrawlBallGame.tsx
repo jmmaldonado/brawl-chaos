@@ -6,8 +6,8 @@ import { Star, X, Trophy } from 'lucide-react';
 
 interface GameProps {
   playerBrawler: Brawler;
-  onWin: () => void;
-  onLoss: () => void;
+  onWin: (kills: number) => void;
+  onLoss: (kills: number) => void;
   onExit: () => void;
 }
 
@@ -62,6 +62,8 @@ export const BrawlBallGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLos
   const superRequested = useRef(false);
   const joystick = useRef({ active: false, startX: 0, startY: 0, currentX: 0, currentY: 0, touchId: null as number | null });
   const brawlerImages = useRef<Record<string, HTMLImageElement>>({});
+  const [kills, setKills] = useState(0);
+  const killsRef = useRef(0);
   
   const scoreRef = useRef({ player: 0, enemy: 0 });
 
@@ -418,6 +420,10 @@ export const BrawlBallGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLos
             projectiles.splice(i, 1);
             if (t.hp <= 0) {
                t.respawnTimer = 300; // 5 seconds at 60fps
+               if (t.team === 'enemy') {
+                 setKills(prev => prev + 1);
+                 killsRef.current++;
+               }
                if (ball.ownerId === t.id) ball.ownerId = null; // Drop ball on death
             }
           }
@@ -538,14 +544,14 @@ export const BrawlBallGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLos
         <div className="absolute inset-0 bg-blue-600/90 flex flex-col items-center justify-center z-[200]">
           <Trophy className="w-24 h-24 text-yellow-400 mb-4 animate-bounce" />
           <h1 className="text-6xl font-black italic uppercase">¡VICTORIA!</h1>
-          <button onClick={onWin} className="mt-8 px-12 py-4 bg-white text-blue-600 rounded-full font-black uppercase text-xl hover:scale-105 transition-all">Continuar</button>
+          <button onClick={() => onWin(killsRef.current)} className="mt-8 px-12 py-4 bg-white text-blue-600 rounded-full font-black uppercase text-xl hover:scale-105 transition-all">Continuar</button>
         </div>
       )}
       {gameState === 'lost' && (
         <div className="absolute inset-0 bg-red-600/90 flex flex-col items-center justify-center z-[200]">
           <X className="w-24 h-24 text-white mb-4 animate-pulse" />
           <h1 className="text-6xl font-black italic uppercase">DERROTA</h1>
-          <button onClick={onLoss} className="mt-8 px-12 py-4 bg-white text-red-600 rounded-full font-black uppercase text-xl hover:scale-105 transition-all">Continuar</button>
+          <button onClick={() => onLoss(killsRef.current)} className="mt-8 px-12 py-4 bg-white text-red-600 rounded-full font-black uppercase text-xl hover:scale-105 transition-all">Continuar</button>
         </div>
       )}
     </div>
