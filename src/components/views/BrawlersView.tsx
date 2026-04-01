@@ -58,7 +58,23 @@ export const BrawlersView: React.FC<BrawlersViewProps> = ({
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 pb-20">
-        {brawlers.map(brawler => {
+        {[...brawlers].sort((a, b) => {
+          const aUnlocked = user.unlockedBrawlers.includes(a.id);
+          const bUnlocked = user.unlockedBrawlers.includes(b.id);
+
+          if (aUnlocked && !bUnlocked) return -1;
+          if (!aUnlocked && bUnlocked) return 1;
+
+          if (aUnlocked) {
+            const aPower = a.stats.hp + a.stats.damage + (a.stats.speed * 100) + (a.stats.range * 100);
+            const bPower = b.stats.hp + b.stats.damage + (b.stats.speed * 100) + (b.stats.range * 100);
+            return bPower - aPower;
+          } else {
+            const aCost = RARITY_COSTS[a.rarity];
+            const bCost = RARITY_COSTS[b.rarity];
+            return aCost - bCost;
+          }
+        }).map(brawler => {
           const isUnlocked = user.unlockedBrawlers.includes(brawler.id);
           const isSelected = user.selectedBrawlerId === brawler.id;
           const cost = RARITY_COSTS[brawler.rarity];
