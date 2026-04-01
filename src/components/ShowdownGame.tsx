@@ -60,14 +60,25 @@ export const ShowdownGame: React.FC<GameProps> = ({ playerBrawler, onFinish, onE
   const [gameState, setGameState] = useState<'playing' | 'finished'>('playing');
   const [rank, setRank] = useState(11);
   const [remaining, setRemaining] = useState(11);
-  const [superCharge, setSuperCharge] = useState(0);
+  const [superCharge, _setSuperCharge] = useState(0);
+  const superChargeRef = useRef(0);
+  const setSuperCharge = (val: number | ((prev: number) => number)) => {
+    if (typeof val === 'function') {
+      const newVal = val(superChargeRef.current);
+      superChargeRef.current = newVal;
+      _setSuperCharge(newVal);
+    } else {
+      superChargeRef.current = val;
+      _setSuperCharge(val);
+    }
+  };
   const [gasRadius, setGasRadius] = useState(2000);
   
   const keys = useRef<Set<string>>(new Set());
   const mousePos = useRef({ x: 0, y: 0 });
   const lastShot = useRef(0);
   const superRequested = useRef(false);
-  const joystick = useRef({ active: false, startX: 0, startY: 0, currentX: 0, currentY: 0 });
+  const joystick = useRef({ active: false, startX: 0, startY: 0, currentX: 0, currentY: 0, touchId: null as number | null });
   const finishCalled = useRef(false);
   const brawlerImages = useRef<Record<string, HTMLImageElement>>({});
 
@@ -150,7 +161,7 @@ export const ShowdownGame: React.FC<GameProps> = ({ playerBrawler, onFinish, onE
     const shootAt = (tx: number, ty: number, isSuper = false) => {
       const now = Date.now();
       if (!isSuper && now - lastShot.current < 500) return;
-      if (isSuper && superCharge < 100) return;
+      if (isSuper && superChargeRef.current < 100) return;
       
       if (!isSuper) lastShot.current = now;
       else {
@@ -181,7 +192,24 @@ export const ShowdownGame: React.FC<GameProps> = ({ playerBrawler, onFinish, onE
       }
     };
 
-    const shootSuper = () => shootAt(mousePos.current.x, mousePos.current.y, true);
+    const shootSuper = () => {
+      // Auto-aim for Super: find the nearest alive enemy
+      let nearestDist = Infinity;
+      let targetX = mousePos.current.x;
+      let targetY = mousePos.current.y;
+
+      enemies.forEach(e => {
+        if (e.hp <= 0) return;
+        const dist = Math.hypot(e.x - player.x, e.y - player.y);
+        if (dist < nearestDist) {
+          nearestDist = dist;
+          targetX = e.x;
+          targetY = e.y;
+        }
+      });
+
+      shootAt(targetX, targetY, true);
+    };
 
     let animationFrame: number;
 
@@ -502,34 +530,64 @@ export const ShowdownGame: React.FC<GameProps> = ({ playerBrawler, onFinish, onE
     const handleClick = () => shootAt(mousePos.current.x, mousePos.current.y);
 
     const handleTouchStart = (e: TouchEvent) => {
-      const touch = e.touches[0];
-      if (touch.clientX < width / 2) {
-        joystick.current = { active: true, startX: touch.clientX, startY: touch.clientY, currentX: touch.clientX, currentY: touch.clientY };
-      } else {
-        mousePos.current = { x: touch.clientX + player.x - width / 2, y: touch.clientY + player.y - height / 2 };
-        shootAt(mousePos.current.x, mousePos.current.y);
+      // Prevent default to avoid scrolling/zooming
+      if ((e.target as HTMLElement).tagName === 'CANVAS') {
+        e.preventDefault();
+      }
+
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const touch = e.changedTouches[i];
+        
+        // Check if touch is on HUD elements
+        const target = touch.target as HTMLElement;
+        if (target.closest('button') || target.closest('.hud-element')) {
+          continue;
+        }
+
+        if (touch.clientX < width / 2 && joystick.current.touchId === null) {
+          joystick.current = { 
+            active: true, 
+            startX: touch.clientX, 
+            startY: touch.clientY, 
+            currentX: touch.clientX, 
+            currentY: touch.clientY,
+            touchId: touch.identifier 
+          };
+        } else {
+          mousePos.current = { x: touch.clientX + player.x - width / 2, y: touch.clientY + player.y - height / 2 };
+          shootAt(mousePos.current.x, mousePos.current.y);
+        }
       }
     };
 
     const handleTouchMove = (e: TouchEvent) => {
-      const touch = e.touches[0];
-      if (joystick.current.active) {
-        joystick.current.currentX = touch.clientX;
-        joystick.current.currentY = touch.clientY;
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const touch = e.changedTouches[i];
+        if (joystick.current.active && touch.identifier === joystick.current.touchId) {
+          joystick.current.currentX = touch.clientX;
+          joystick.current.currentY = touch.clientY;
+        }
       }
     };
 
-    const handleTouchEnd = () => {
-      joystick.current.active = false;
+    const handleTouchEnd = (e: TouchEvent) => {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const touch = e.changedTouches[i];
+        if (touch.identifier === joystick.current.touchId) {
+          joystick.current.active = false;
+          joystick.current.touchId = null;
+        }
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mousedown', handleClick);
-    window.addEventListener('touchstart', handleTouchStart);
-    window.addEventListener('touchmove', handleTouchMove);
+    window.addEventListener('touchstart', handleTouchStart, { passive: false });
+    window.addEventListener('touchmove', handleTouchMove, { passive: false });
     window.addEventListener('touchend', handleTouchEnd);
+    window.addEventListener('touchcancel', handleTouchEnd);
 
     return () => {
       cancelAnimationFrame(animationFrame);
@@ -540,6 +598,7 @@ export const ShowdownGame: React.FC<GameProps> = ({ playerBrawler, onFinish, onE
       window.removeEventListener('touchstart', handleTouchStart);
       window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('touchend', handleTouchEnd);
+      window.removeEventListener('touchcancel', handleTouchEnd);
     };
   }, [gameState]);
 
@@ -548,7 +607,7 @@ export const ShowdownGame: React.FC<GameProps> = ({ playerBrawler, onFinish, onE
       <canvas ref={canvasRef} className="block" />
 
       {/* HUD */}
-      <div className="absolute top-3 left-3 flex flex-col gap-1">
+      <div className="hud-element absolute top-3 left-3 flex flex-col gap-1">
         <div className="flex items-center gap-2 bg-slate-900/80 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/10">
           <Skull className="w-4 h-4 text-red-500" />
           <span className="text-lg font-bold text-white font-mono">{remaining}</span>
@@ -571,7 +630,7 @@ export const ShowdownGame: React.FC<GameProps> = ({ playerBrawler, onFinish, onE
           <div className="absolute inset-0 flex items-center justify-center">
             <button 
               className={`w-14 h-14 rounded-full border-4 flex items-center justify-center transition-all active:scale-90 ${superCharge >= 100 ? 'bg-yellow-500 border-yellow-300 shadow-[0_0_20px_rgba(234,179,8,0.5)]' : 'bg-slate-800 border-white/10 opacity-50'}`}
-              onClick={() => { if (superCharge >= 100) superRequested.current = true; }}
+              onPointerDown={(e) => { e.stopPropagation(); if (superCharge >= 100) superRequested.current = true; }}
             >
               <Star className={`w-7 h-7 ${superCharge >= 100 ? 'text-slate-950 fill-current' : 'text-white/30'}`} />
             </button>
@@ -581,7 +640,7 @@ export const ShowdownGame: React.FC<GameProps> = ({ playerBrawler, onFinish, onE
 
       {/* Exit Button */}
       <button 
-        onClick={onExit}
+        onPointerDown={(e) => { e.stopPropagation(); onExit(); }}
         className="absolute top-3 right-3 p-2 bg-slate-900/80 backdrop-blur-md rounded-full border border-white/10 text-white/50 hover:text-white transition-colors"
       >
         <X className="w-4 h-4" />

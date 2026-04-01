@@ -42,13 +42,18 @@ export const GemGrabGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLoss,
   const [playerGems, setPlayerGems] = useState(0);
   const [enemyGems, setEnemyGems] = useState(0);
   const [countdown, setCountdown] = useState<number | null>(null);
-  const [superCharge, setSuperCharge] = useState(0);
+  const [superCharge, _setSuperCharge] = useState(0);
+  const superChargeRef = useRef(0);
+  const setSuperCharge = (val: number) => {
+    superChargeRef.current = val;
+    _setSuperCharge(val);
+  };
 
   const keys = useRef<Set<string>>(new Set());
   const mousePos = useRef({ x: 0, y: 0 });
   const lastShot = useRef(0);
   const superRequested = useRef(false);
-  const joystick = useRef({ active: false, startX: 0, startY: 0, currentX: 0, currentY: 0 });
+  const joystick = useRef({ active: false, startX: 0, startY: 0, currentX: 0, currentY: 0, touchId: null as number | null });
   const brawlerImages = useRef<Record<string, HTMLImageElement>>({});
 
   useEffect(() => {
@@ -113,45 +118,75 @@ export const GemGrabGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLoss,
     };
 
     const handleTouchStart = (e: TouchEvent) => {
-      const touch = e.touches[0];
-      if (touch.clientX < width / 2) {
-        joystick.current = { active: true, startX: touch.clientX, startY: touch.clientY, currentX: touch.clientX, currentY: touch.clientY };
-      } else {
-        shootAt(touch.clientX, touch.clientY);
+      // Prevent default to avoid scrolling/zooming, but only if we are on the canvas
+      if ((e.target as HTMLElement).tagName === 'CANVAS') {
+        e.preventDefault();
+      }
+
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const touch = e.changedTouches[i];
+        
+        // Check if touch is on HUD elements (like Super button or Exit button)
+        const target = touch.target as HTMLElement;
+        if (target.closest('button') || target.closest('.hud-element')) {
+          continue;
+        }
+
+        if (touch.clientX < width / 2 && joystick.current.touchId === null) {
+          joystick.current = { 
+            active: true, 
+            startX: touch.clientX, 
+            startY: touch.clientY, 
+            currentX: touch.clientX, 
+            currentY: touch.clientY,
+            touchId: touch.identifier 
+          };
+        } else {
+          // Shoot if touch is on the right side or if joystick is already active elsewhere
+          mousePos.current = { x: touch.clientX, y: touch.clientY };
+          shootAt(touch.clientX, touch.clientY);
+        }
       }
     };
 
     const handleTouchMove = (e: TouchEvent) => {
-      if (joystick.current.active) {
-        const touch = Array.from(e.touches).find(t => t.clientX < width / 2);
-        if (touch) {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const touch = e.changedTouches[i];
+        if (joystick.current.active && touch.identifier === joystick.current.touchId) {
           joystick.current.currentX = touch.clientX;
           joystick.current.currentY = touch.clientY;
         }
       }
     };
 
-    const handleTouchEnd = () => {
-      joystick.current.active = false;
+    const handleTouchEnd = (e: TouchEvent) => {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const touch = e.changedTouches[i];
+        if (touch.identifier === joystick.current.touchId) {
+          joystick.current.active = false;
+          joystick.current.touchId = null;
+        }
+      }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mousedown', handleMouseDown);
-    window.addEventListener('touchstart', handleTouchStart);
-    window.addEventListener('touchmove', handleTouchMove);
+    window.addEventListener('touchstart', handleTouchStart, { passive: false });
+    window.addEventListener('touchmove', handleTouchMove, { passive: false });
     window.addEventListener('touchend', handleTouchEnd);
+    window.addEventListener('touchcancel', handleTouchEnd);
     window.addEventListener('contextmenu', e => e.preventDefault());
 
     const shootAt = (tx: number, ty: number, isSuper = false) => {
       const now = Date.now();
       if (!isSuper && now - lastShot.current < 400) return;
-      if (isSuper && player.superCharge < 100) return;
+      
+      if (isSuper && superChargeRef.current < 100) return;
       
       if (!isSuper) lastShot.current = now;
       else {
-        player.superCharge = 0;
         setSuperCharge(0);
       }
 
@@ -180,7 +215,23 @@ export const GemGrabGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLoss,
     };
 
     const shoot = () => shootAt(mousePos.current.x, mousePos.current.y);
-    const shootSuper = () => shootAt(mousePos.current.x, mousePos.current.y, true);
+    const shootSuper = () => {
+      // Auto-aim for Super: find the nearest enemy
+      let nearestDist = Infinity;
+      let targetX = mousePos.current.x;
+      let targetY = mousePos.current.y;
+
+      enemies.forEach(e => {
+        const dist = Math.hypot(e.x - player.x, e.y - player.y);
+        if (dist < nearestDist) {
+          nearestDist = dist;
+          targetX = e.x;
+          targetY = e.y;
+        }
+      });
+
+      shootAt(targetX, targetY, true);
+    };
 
     let animationFrame: number;
 
@@ -261,8 +312,7 @@ export const GemGrabGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLoss,
               
               // Charge super on hit
               if (!p.isSuper) {
-                player.superCharge = Math.min(100, player.superCharge + 15);
-                setSuperCharge(player.superCharge);
+                setSuperCharge(Math.min(100, superChargeRef.current + 15));
               }
 
               // Hit particles
@@ -479,9 +529,10 @@ export const GemGrabGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLoss,
       window.removeEventListener('touchstart', handleTouchStart);
       window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('touchend', handleTouchEnd);
+      window.removeEventListener('touchcancel', handleTouchEnd);
       cancelAnimationFrame(animationFrame);
     };
-  }, [gameState, playerBrawler, countdown]);
+  }, [gameState, playerBrawler]); // Removed countdown to prevent game reset every second
 
   useEffect(() => {
     if (countdown !== null && countdown > 0) {
@@ -501,7 +552,7 @@ export const GemGrabGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLoss,
   return (
     <div className="fixed inset-0 bg-slate-950 z-[100] flex flex-col overflow-hidden touch-none">
       {/* HUD */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-6 bg-black/60 backdrop-blur-xl px-6 py-3 rounded-[24px] border-2 border-white/10 shadow-2xl z-[110]">
+      <div className="hud-element absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-6 bg-black/60 backdrop-blur-xl px-6 py-3 rounded-[24px] border-2 border-white/10 shadow-2xl z-[110]">
         <div className="flex flex-col items-center">
           <span className="text-[8px] font-black text-blue-400 uppercase tracking-[0.2em]">Tus Gemas</span>
           <span className="text-2xl font-black text-white italic">{playerGems}</span>
@@ -526,7 +577,7 @@ export const GemGrabGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLoss,
           <div className="absolute inset-0 bg-yellow-400/20 blur-xl rounded-full animate-pulse" />
           <button 
             className={`w-16 h-16 rounded-full border-4 flex items-center justify-center transition-all active:scale-90 ${superCharge >= 100 ? 'bg-yellow-500 border-yellow-300 shadow-[0_0_20px_rgba(234,179,8,0.5)]' : 'bg-slate-800 border-white/10 opacity-50'}`}
-            onClick={() => { superRequested.current = true; }}
+            onPointerDown={(e) => { e.stopPropagation(); if (superCharge >= 100) superRequested.current = true; }}
           >
             <Star className={`w-8 h-8 ${superCharge >= 100 ? 'text-slate-950 fill-current' : 'text-white/30'}`} />
           </button>
@@ -548,7 +599,7 @@ export const GemGrabGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLoss,
       </div>
 
       <button 
-        onClick={onExit}
+        onPointerDown={(e) => { e.stopPropagation(); onExit(); }}
         className="absolute top-4 right-4 p-2 bg-white/10 hover:bg-white/20 rounded-xl border-2 border-white/10 transition-all z-[110]"
       >
         <X className="w-5 h-5" />
