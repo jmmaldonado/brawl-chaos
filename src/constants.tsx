@@ -1,4 +1,6 @@
-import { Brawler, Rarity } from './types';
+import React from 'react';
+import { Brawler, Rarity, GameMode } from './types';
+import { Users, Zap, Target, Shield } from 'lucide-react';
 
 export const RARITY_COSTS: Record<Rarity, number> = {
   'Común': 0,
@@ -18,6 +20,13 @@ export const RARITY_COLORS: Record<Rarity | 'Ultra', string> = {
   'Legendario': '#f59e0b', // amber-500
   'Ultra': '#f43f5e', // rose-500
 };
+
+export const GAME_MODES: { id: GameMode; name: string; icon: React.ReactNode; color: string; description: string }[] = [
+  { id: 'Atrapagemas', name: 'Atrapagemas', icon: <Zap className="w-6 h-6" />, color: 'bg-purple-500', description: '¡Recoge 10 gemas y mantenlas para ganar!' },
+  { id: 'Noqueo', name: 'Noqueo', icon: <Target className="w-6 h-6" />, color: 'bg-orange-500', description: 'Elimina a todos los oponentes.' },
+  { id: 'Supervivencia', name: 'Supervivencia', icon: <Shield className="w-6 h-6" />, color: 'bg-green-500', description: 'Sé el último brawler en pie.' },
+  { id: 'Balón Brawl', name: 'Balón Brawl', icon: <Users className="w-6 h-6" />, color: 'bg-blue-500', description: '¡Marca dos goles para ganar!' },
+];
 
 const BRAWLER_NAMES = [
   "Shelly", "Colt", "Nita", "Bull", "Jessie", "Brock", "Dynamike", "Bo", "Tick", "8-Bit",
@@ -59,3 +68,4 @@ export const BRAWLERS: Brawler[] = BRAWLER_NAMES.map((name, index) => {
     }
   };
 });
+
