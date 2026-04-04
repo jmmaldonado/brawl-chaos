@@ -6,6 +6,7 @@ import { Star, X, Trophy } from 'lucide-react';
 
 interface GameProps {
   playerBrawler: Brawler;
+  brawlBallWins?: number;
   onWin: (kills: number) => void;
   onLoss: (kills: number) => void;
   onExit: () => void;
@@ -42,9 +43,24 @@ interface Projectile {
   damage: number;
   team: 'player' | 'enemy';
   isSuper?: boolean;
+  radius?: number;
 }
 
-export const BrawlBallGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLoss, onExit }) => {
+interface Obstacle {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+interface PowerUp {
+  x: number;
+  y: number;
+  type: 'speed_boost' | 'super_kick' | 'slow_down';
+  timer: number;
+}
+
+export const BrawlBallGame: React.FC<GameProps> = ({ playerBrawler, brawlBallWins = 0, onWin, onLoss, onExit }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [gameState, setGameState] = useState<'playing' | 'scored' | 'won' | 'lost'>('playing');
   const [playerScore, setPlayerScore] = useState(0);
@@ -66,6 +82,7 @@ export const BrawlBallGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLos
   const killsRef = useRef(0);
   
   const scoreRef = useRef({ player: 0, enemy: 0 });
+  const activeBuffs = useRef<Record<string, { type: 'speed_boost' | 'super_kick' | 'slow_down', timer: number }>>({});
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -114,6 +131,24 @@ export const BrawlBallGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLos
     const ball: Ball = { x: width / 2, y: height / 2, vx: 0, vy: 0, radius: 20, ownerId: null, lastOwnerId: null, kickTimer: 0 };
     const projectiles: Projectile[] = [];
     const particles: { x: number, y: number, vx: number, vy: number, life: number, color: string }[] = [];
+    const obstacles: Obstacle[] = [];
+    const powerUps: PowerUp[] = [];
+
+    // Generate obstacles
+    const numObstaclePairs = Math.min(10, Math.floor(brawlBallWins / 2));
+    for (let i = 0; i < numObstaclePairs; i++) {
+       let ox = width / 2;
+       let oy = height / 2;
+       while (
+         (Math.hypot(ox - width/2, oy - height/2) < 200) || 
+         (ox < 200) || (ox > width - 200) || (Math.abs(oy - height/2) < 150)
+       ) {
+         ox = width/4 + Math.random() * (width/2);
+         oy = height/4 + Math.random() * (height/2);
+       }
+       obstacles.push({ x: ox - 20, y: oy - 50, width: 40, height: 100 });
+       obstacles.push({ x: width - ox - 20, y: height - oy - 50, width: 40, height: 100 });
+    }
 
     const GOAL_WIDTH = 100;
     const GOAL_HEIGHT = 200;
@@ -139,11 +174,14 @@ export const BrawlBallGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLos
       
       const actuallySuper = isSuper || (superRequested.current && superChargeRef.current >= 100);
 
+      const buff = activeBuffs.current[player.id];
+      const powMult = buff?.type === 'super_kick' ? 2 : 1;
+
       if (ball.ownerId === player.id) {
         // Kick ball instead
         const angle = Math.atan2(ty - player.y, tx - player.x);
-        ball.vx = Math.cos(angle) * (actuallySuper ? 25 : 18);
-        ball.vy = Math.sin(angle) * (actuallySuper ? 25 : 18);
+        ball.vx = Math.cos(angle) * (actuallySuper ? 25 : 18) * powMult;
+        ball.vy = Math.sin(angle) * (actuallySuper ? 25 : 18) * powMult;
         ball.ownerId = null;
         ball.lastOwnerId = player.id;
         ball.kickTimer = 20; // 20 frames of no-pickup for the kicker
@@ -156,7 +194,8 @@ export const BrawlBallGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLos
       }
 
       const now = Date.now();
-      if (!actuallySuper && now - lastShot.current < 400) return;
+      const fireRate = playerBrawler.stats.fireRate || 400;
+      if (!actuallySuper && now - lastShot.current < fireRate) return;
       if (actuallySuper && superChargeRef.current < 100) return;
       
       if (!actuallySuper) lastShot.current = now;
@@ -166,12 +205,41 @@ export const BrawlBallGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLos
       }
 
       const angle = Math.atan2(ty - player.y, tx - player.x);
-      projectiles.push({
-        x: player.x, y: player.y,
-        vx: Math.cos(angle) * 12, vy: Math.sin(angle) * 12,
-        damage: actuallySuper ? playerBrawler.stats.damage * 2.5 : playerBrawler.stats.damage,
-        team: 'player', isSuper: actuallySuper
-      });
+      const pType = actuallySuper ? 'normal' : (playerBrawler.stats.projectileType || 'normal');
+      const baseDamage = actuallySuper ? playerBrawler.stats.damage * 2.5 : playerBrawler.stats.damage;
+
+      if (pType === 'fan') {
+         [-0.2, 0, 0.2].forEach(offset => {
+           projectiles.push({
+             x: player.x, y: player.y,
+             vx: Math.cos(angle + offset) * 12, vy: Math.sin(angle + offset) * 12,
+             damage: baseDamage, team: 'player', isSuper: actuallySuper
+           });
+         });
+      } else if (pType === 'burst') {
+         for (let i=0; i<3; i++) {
+           setTimeout(() => {
+             projectiles.push({
+               x: player.x, y: player.y,
+               vx: Math.cos(angle) * 12, vy: Math.sin(angle) * 12,
+               damage: baseDamage, team: 'player', isSuper: actuallySuper
+             });
+           }, i * 150);
+         }
+      } else if (pType === 'big_slow') {
+         projectiles.push({
+             x: player.x, y: player.y,
+             vx: Math.cos(angle) * 6, vy: Math.sin(angle) * 6,
+             damage: baseDamage * 2, team: 'player', isSuper: actuallySuper,
+             radius: 20
+         });
+      } else {
+         projectiles.push({
+             x: player.x, y: player.y,
+             vx: Math.cos(angle) * 12, vy: Math.sin(angle) * 12,
+             damage: baseDamage, team: 'player', isSuper: actuallySuper
+         });
+      }
     };
 
     const handleMouseDown = (e: MouseEvent) => {
@@ -260,6 +328,28 @@ export const BrawlBallGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLos
         }
       }
 
+      // Obstacle Collisions for entities
+      allEntities.forEach(e => {
+         obstacles.forEach(obs => {
+            const distX = Math.abs(e.x - (obs.x + obs.width/2));
+            const distY = Math.abs(e.y - (obs.y + obs.height/2));
+
+            if (distX > (obs.width/2 + e.radius)) return;
+            if (distY > (obs.height/2 + e.radius)) return;
+
+            if (distX <= (obs.width/2)) {
+               if (e.y < obs.y) e.y = obs.y - e.radius;
+               else e.y = obs.y + obs.height + e.radius;
+               return;
+            } 
+            if (distY <= (obs.height/2)) {
+               if (e.x < obs.x) e.x = obs.x - e.radius;
+               else e.x = obs.x + obs.width + e.radius;
+               return;
+            }
+         });
+      });
+
       // Player Movement
       let dx = 0, dy = 0;
       if (player.respawnTimer > 0) {
@@ -282,8 +372,10 @@ export const BrawlBallGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLos
           if (dist > 5) { dx = jdx / dist; dy = jdy / dist; }
         }
 
+        const buff = activeBuffs.current[player.id];
+        const sBoost = buff?.type === 'speed_boost' ? 1.5 : 1.0;
         const speedScale = ball.ownerId === player.id ? 0.8 : 1.0;
-        const speed = playerBrawler.stats.speed * speedScale;
+        const speed = playerBrawler.stats.speed * speedScale * sBoost;
         if (dx !== 0 || dy !== 0) {
           const mag = Math.hypot(dx, dy);
           player.x += (dx / mag) * speed;
@@ -316,6 +408,19 @@ export const BrawlBallGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLos
           ball.vy *= -0.8;
           ball.y = Math.max(ball.radius, Math.min(height - ball.radius, ball.y));
         }
+
+        // Ball Obstacle Collisions
+        obstacles.forEach(obs => {
+           const cx = obs.x + obs.width/2;
+           const cy = obs.y + obs.height/2;
+           if (ball.x > obs.x - ball.radius && ball.x < obs.x + obs.width + ball.radius &&
+               ball.y > obs.y - ball.radius && ball.y < obs.y + obs.height + ball.radius) {
+               if (Math.abs(ball.x - cx) > Math.abs(ball.y - cy)) ball.vx *= -1;
+               else ball.vy *= -1;
+               ball.x += ball.vx;
+               ball.y += ball.vy;
+           }
+        });
 
         // Ball pick up
         if (ball.kickTimer > 0) ball.kickTimer--;
@@ -410,6 +515,33 @@ export const BrawlBallGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLos
         }
       });
 
+      // Powerups logic
+      if (Math.random() < 0.002) {
+         powerUps.push({
+           x: 200 + Math.random() * (width - 400),
+           y: 200 + Math.random() * (height - 400),
+           type: Math.random() > 0.5 ? 'speed_boost' : 'super_kick',
+           timer: 500
+         });
+      }
+
+      for (let i = powerUps.length - 1; i >= 0; i--) {
+         const p = powerUps[i];
+         p.timer--;
+         if (p.timer <= 0) { powerUps.splice(i, 1); continue; }
+         allEntities.forEach(e => {
+            if (e.respawnTimer <= 0 && Math.hypot(e.x - p.x, e.y - p.y) < e.radius + 15) {
+               activeBuffs.current[e.id] = { type: p.type, timer: 300 };
+               powerUps.splice(i, 1);
+            }
+         });
+      }
+
+      Object.keys(activeBuffs.current).forEach(id => {
+         activeBuffs.current[id].timer--;
+         if (activeBuffs.current[id].timer <= 0) delete activeBuffs.current[id];
+      });
+
       // Projectiles & Particles update (reused from GemGrab)
        for (let i = projectiles.length - 1; i >= 0; i--) {
         const p = projectiles[i];
@@ -419,8 +551,9 @@ export const BrawlBallGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLos
         const targets = p.team === 'player' ? enemies : [player, partner];
         targets.forEach(t => {
           if (t.respawnTimer > 0) return;
+          const projRad = p.radius || (p.isSuper ? 12 : 6);
           const d = Math.hypot(p.x - t.x, p.y - t.y);
-          if (d < t.radius + 10) {
+          if (d < t.radius + projRad) {
             t.hp -= p.damage;
             if (p.team === 'player' && !p.isSuper) setSuperCharge(Math.min(100, superChargeRef.current + 15));
             projectiles.splice(i, 1);
@@ -449,6 +582,20 @@ export const BrawlBallGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLos
       // Goals
       ctx.fillStyle = 'rgba(59, 130, 246, 0.2)'; ctx.fillRect(0, height / 2 - GOAL_HEIGHT / 2, 50, GOAL_HEIGHT);
       ctx.fillStyle = 'rgba(239, 68, 68, 0.2)'; ctx.fillRect(width - 50, height / 2 - GOAL_HEIGHT / 2, 50, GOAL_HEIGHT);
+
+      // Obstacles
+      ctx.fillStyle = '#475569';
+      obstacles.forEach(obs => {
+         ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+      });
+
+      // Powerups
+      powerUps.forEach(p => {
+         ctx.fillStyle = p.type === 'speed_boost' ? '#3b82f6' : '#ef4444';
+         ctx.beginPath(); ctx.arc(p.x, p.y, 15, 0, Math.PI * 2); ctx.fill();
+         ctx.fillStyle = '#fff'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center'; 
+         ctx.fillText(p.type === 'speed_boost' ? '⚡' : '🔥', p.x, p.y + 4);
+      });
 
       // Entities
       [player, partner, ...enemies].forEach(e => {
@@ -488,8 +635,9 @@ export const BrawlBallGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLos
 
       // Projectiles
       projectiles.forEach(p => {
+        const pr = p.radius || (p.isSuper ? 12 : 6);
         ctx.fillStyle = p.team === 'player' ? (p.isSuper ? '#fbbf24' : '#fff') : '#ef4444';
-        ctx.beginPath(); ctx.arc(p.x, p.y, p.isSuper ? 12 : 6, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(p.x, p.y, pr, 0, Math.PI * 2); ctx.fill();
       });
 
       // Scoring overlay

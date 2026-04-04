@@ -14,7 +14,10 @@ interface BrawlersViewProps {
   onShowBrawlerInfo: (brawler: Brawler) => void;
   onUnlock: (brawler: Brawler) => void;
   onSelect: (brawler: Brawler) => void;
+  onEditCustomBrawler?: () => void;
 }
+
+type SortOption = 'power' | 'cost' | 'hp' | 'damage' | 'speed';
 
 export const BrawlersView: React.FC<BrawlersViewProps> = ({
   user,
@@ -24,8 +27,10 @@ export const BrawlersView: React.FC<BrawlersViewProps> = ({
   onBack,
   onShowBrawlerInfo,
   onUnlock,
-  onSelect
+  onSelect,
+  onEditCustomBrawler
 }) => {
+  const [sortBy, setSortBy] = React.useState<SortOption>('power');
   return (
     <motion.div 
       key="brawlers"
@@ -51,32 +56,53 @@ export const BrawlersView: React.FC<BrawlersViewProps> = ({
               className="bg-slate-800 border-2 border-white/5 rounded-xl px-4 py-2 w-32 sm:w-48 focus:border-blue-500 outline-none transition-all font-bold text-sm"
             />
           </div>
-          <div className="flex items-center gap-2 bg-slate-800 px-3 py-2 rounded-xl border border-white/5">
+          <div className="flex items-center gap-2 bg-slate-800 px-3 py-2 rounded-xl border border-white/5 whitespace-nowrap">
             <Users className="w-4 h-4 text-blue-400" />
-            <span className="font-black text-sm">{user.unlockedBrawlers.length} / {brawlers.length}</span>
+            <span className="font-black text-sm">{user.unlockedBrawlers.length} / {brawlers.length - 1}</span>
           </div>
+          <select 
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as SortOption)}
+            className="bg-slate-800 border-2 border-white/5 rounded-xl px-2 py-2 focus:border-blue-500 outline-none transition-all font-bold text-sm text-white"
+          >
+            <option value="power">Poder</option>
+            <option value="hp">Vida</option>
+            <option value="damage">Daño</option>
+            <option value="speed">Velocidad</option>
+            <option value="cost">Coste</option>
+          </select>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 pb-20">
         {[...brawlers].sort((a, b) => {
+          if (a.id === 'custom') return -1;
+          if (b.id === 'custom') return 1;
+
           const aUnlocked = user.unlockedBrawlers.includes(a.id);
           const bUnlocked = user.unlockedBrawlers.includes(b.id);
 
           if (aUnlocked && !bUnlocked) return -1;
           if (!aUnlocked && bUnlocked) return 1;
 
-          if (aUnlocked) {
+          if (sortBy === 'power') {
             const aPower = a.stats.hp + a.stats.damage + (a.stats.speed * 100) + (a.stats.range * 100);
             const bPower = b.stats.hp + b.stats.damage + (b.stats.speed * 100) + (b.stats.range * 100);
             return bPower - aPower;
-          } else {
+          } else if (sortBy === 'hp') {
+            return b.stats.hp - a.stats.hp;
+          } else if (sortBy === 'damage') {
+            return b.stats.damage - a.stats.damage;
+          } else if (sortBy === 'speed') {
+            return b.stats.speed - a.stats.speed;
+          } else { // cost
             const aCost = RARITY_COSTS[a.rarity];
             const bCost = RARITY_COSTS[b.rarity];
             return aCost - bCost;
           }
         }).map(brawler => {
-          const isUnlocked = user.unlockedBrawlers.includes(brawler.id);
+          const isCustom = brawler.id === 'custom';
+          const isUnlocked = isCustom || user.unlockedBrawlers.includes(brawler.id);
           const isSelected = user.selectedBrawlerId === brawler.id;
           const cost = RARITY_COSTS[brawler.rarity];
           
@@ -144,12 +170,22 @@ export const BrawlersView: React.FC<BrawlersViewProps> = ({
                       <span>{cost}</span>
                     </button>
                   ) : (
-                    <button 
-                      onClick={() => onSelect(brawler)}
-                      className={`w-full font-black py-2 rounded-xl transition-all text-xs uppercase italic tracking-tighter ${isSelected ? 'bg-green-500 text-white cursor-default' : 'bg-white/10 text-white hover:bg-white/20'}`}
-                    >
-                      {isSelected ? 'SELECCIONADO' : 'SELECCIONAR'}
-                    </button>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => onSelect(brawler)}
+                        className={`flex-1 font-black py-2 rounded-xl transition-all text-[10px] sm:text-xs uppercase italic tracking-tighter ${isSelected ? 'bg-green-500 text-white cursor-default' : 'bg-white/10 text-white hover:bg-white/20'}`}
+                      >
+                        {isSelected ? 'SELECCIONADO' : 'SELECCIONAR'}
+                      </button>
+                      {isCustom && onEditCustomBrawler && (
+                        <button 
+                          onClick={onEditCustomBrawler}
+                          className="px-3 bg-blue-500 text-white font-black py-2 rounded-xl text-xs hover:bg-blue-400"
+                        >
+                          EDITAR
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>

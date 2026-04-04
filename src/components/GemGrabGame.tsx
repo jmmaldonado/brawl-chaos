@@ -29,6 +29,7 @@ interface Projectile {
   vy: number;
   damage: number;
   team: 'player' | 'enemy';
+  radius?: number;
 }
 
 interface Gem {
@@ -200,7 +201,8 @@ export const GemGrabGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLoss,
 
     const shootAt = (tx: number, ty: number, isSuper = false) => {
       const now = Date.now();
-      if (!isSuper && now - lastShot.current < 400) return;
+      const fireRate = playerBrawler.stats.fireRate || 400;
+      if (!isSuper && now - lastShot.current < fireRate) return;
       
       if (isSuper && superChargeRef.current < 100) return;
       
@@ -210,15 +212,41 @@ export const GemGrabGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLoss,
       }
 
       const angle = Math.atan2(ty - player.y, tx - player.x);
-      projectiles.push({
-        x: player.x,
-        y: player.y,
-        vx: Math.cos(angle) * (isSuper ? 15 : 12),
-        vy: Math.sin(angle) * (isSuper ? 15 : 12),
-        damage: isSuper ? playerBrawler.stats.damage * 2.5 : playerBrawler.stats.damage,
-        team: 'player',
-        isSuper
-      });
+      const pType = isSuper ? 'normal' : (playerBrawler.stats.projectileType || 'normal');
+      const baseDamage = isSuper ? playerBrawler.stats.damage * 2.5 : playerBrawler.stats.damage;
+
+      if (pType === 'fan') {
+         [-0.2, 0, 0.2].forEach(offset => {
+           projectiles.push({
+             x: player.x, y: player.y,
+             vx: Math.cos(angle + offset) * 12, vy: Math.sin(angle + offset) * 12,
+             damage: baseDamage, team: 'player', isSuper
+           });
+         });
+      } else if (pType === 'burst') {
+         for (let i=0; i<3; i++) {
+           setTimeout(() => {
+             projectiles.push({
+               x: player.x, y: player.y,
+               vx: Math.cos(angle) * 12, vy: Math.sin(angle) * 12,
+               damage: baseDamage, team: 'player', isSuper
+             });
+           }, i * 150);
+         }
+      } else if (pType === 'big_slow') {
+         projectiles.push({
+             x: player.x, y: player.y,
+             vx: Math.cos(angle) * 6, vy: Math.sin(angle) * 6,
+             damage: baseDamage * 2, team: 'player', isSuper,
+             radius: 20
+         });
+      } else {
+         projectiles.push({
+             x: player.x, y: player.y,
+             vx: Math.cos(angle) * 12, vy: Math.sin(angle) * 12,
+             damage: baseDamage, team: 'player', isSuper
+         });
+      }
 
       // Recoil effect
       for (let i = 0; i < 5; i++) {
@@ -325,8 +353,9 @@ export const GemGrabGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLoss,
 
         if (p.team === 'player') {
           enemies.forEach(e => {
+            const projRad = p.radius || (p.isSuper ? 12 : 6);
             const dist = Math.hypot(p.x - e.x, p.y - e.y);
-            if (dist < e.radius + 10) {
+            if (dist < e.radius + projRad) {
               e.hp -= p.damage;
               
               // Charge super on hit
@@ -491,8 +520,9 @@ export const GemGrabGame: React.FC<GameProps> = ({ playerBrawler, onWin, onLoss,
 
       // Projectiles
       projectiles.forEach(p => {
+        const pr = p.radius || (p.isSuper ? 12 : 6);
         ctx.fillStyle = p.team === 'player' ? (p.isSuper ? '#f43f5e' : '#fbbf24') : '#ef4444';
-        ctx.beginPath(); ctx.arc(p.x, p.y, p.isSuper ? 12 : 6, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(p.x, p.y, pr, 0, Math.PI * 2); ctx.fill();
         if (p.isSuper) {
           ctx.shadowBlur = 20; ctx.shadowColor = '#f43f5e';
           ctx.stroke();

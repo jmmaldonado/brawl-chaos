@@ -54,18 +54,23 @@ export const BRAWLERS: Brawler[] = BRAWLER_NAMES.map((name, index) => {
   const baseHp = 3000 + (index * 20);
   const baseDamage = 800 + (index * 10);
   
+  const projectileTypes: ('normal' | 'fan' | 'burst' | 'big_slow')[] = ['normal', 'fan', 'burst', 'big_slow'];
+  const projectileType = projectileTypes[index % 4];
+  const fireRate = 300 + (Math.random() * 400); // 300ms to 700ms
+
   return {
     id: `brawler-${index}`,
     name,
     rarity,
     description: `Un brawler de tipo ${rarity} con habilidades únicas y un estilo de combate especializado.`,
-    //image: `https://picsum.photos/seed/${name}/400/400`,
     image: `https://api.dicebear.com/9.x/bottts/svg?seed=${name}`,
     stats: {
       hp: baseHp,
       damage: baseDamage,
       speed: 3 + (Math.random() * 2),
       range: 4 + (Math.random() * 4),
+      projectileType,
+      fireRate,
     }
   };
 });

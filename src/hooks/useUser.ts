@@ -11,6 +11,9 @@ const INITIAL_USER: UserState = {
   trophies: 0,
   claimedMilestones: [],
   winStreak: 0,
+  brawlBallWins: 0,
+  customBrawlerName: 'Mi Brawler',
+  customBrawlerStats: { hpLevel: 0, damageLevel: 0, speedLevel: 0, fireRateLevel: 0 },
 };
 
 export function useUser() {
@@ -54,7 +57,8 @@ export function useUser() {
       trophies: prev.trophies + 8,
       winStreak: newStreak,
       dailyDropsRemaining: prev.dailyDropsRemaining + dropsToAdd,
-      credits: prev.credits + 20 // Bonus credits for win
+      credits: prev.credits + 20, // Bonus credits for win
+      brawlBallWins: prev.brawlBallWins !== undefined ? prev.brawlBallWins : 0
     }));
 
     return { trophies: 8, drops: dropsToAdd, credits: 20 };
@@ -145,8 +149,51 @@ export function useUser() {
     setUser(prev => ({ ...prev, selectedBrawlerId: id }));
   };
 
+  const updateBrawlBallWin = () => {
+    setUser(prev => ({ ...prev, brawlBallWins: (prev.brawlBallWins || 0) + 1 }));
+  };
+
+  const updateCustomBrawlerName = (name: string) => {
+    setUser(prev => ({ ...prev, customBrawlerName: name }));
+  };
+
+  const upgradeCustomBrawlerStat = (stat: keyof UserState['customBrawlerStats'], cost: number) => {
+    setUser(prev => {
+      if (prev.credits >= cost) {
+        const stats = prev.customBrawlerStats || { hpLevel: 0, damageLevel: 0, speedLevel: 0, fireRateLevel: 0 };
+        return {
+          ...prev,
+          credits: prev.credits - cost,
+          customBrawlerStats: {
+            ...stats,
+            [stat]: (stats[stat as keyof typeof stats] || 0) + 1
+          }
+        };
+      }
+      return prev;
+    });
+  };
+
+  const stats = user.customBrawlerStats || { hpLevel: 0, damageLevel: 0, speedLevel: 0, fireRateLevel: 0 };
+  const customBrawler: Brawler = {
+    id: 'custom',
+    name: user.customBrawlerName || 'Mi Brawler',
+    rarity: 'Legendario', 
+    description: 'Brawler personalizado. Mejóralo a tu gusto.',
+    image: `https://api.dicebear.com/9.x/bottts/svg?seed=${user.customBrawlerName || 'Mi Brawler'}`,
+    stats: {
+      hp: 3000 + (stats.hpLevel * 200),
+      damage: 800 + (stats.damageLevel * 100),
+      speed: 3.0 + (stats.speedLevel * 0.2),
+      range: 5,
+      projectileType: 'normal', 
+      fireRate: Math.max(100, 400 - (stats.fireRateLevel * 20)),
+    }
+  };
+
   return {
     user,
+    customBrawler,
     setUser,
     awardWinTrophies,
     awardLossTrophies,
@@ -155,6 +202,9 @@ export function useUser() {
     unlockBrawler,
     deductDailyDrop,
     addReward,
-    setSelectedBrawlerId
+    setSelectedBrawlerId,
+    updateBrawlBallWin,
+    updateCustomBrawlerName,
+    upgradeCustomBrawlerStat
   };
 }

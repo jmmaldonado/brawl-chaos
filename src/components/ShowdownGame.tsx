@@ -31,6 +31,7 @@ interface Projectile {
   damage: number;
   team: 'player' | 'enemy';
   isSuper?: boolean;
+  radius?: number;
 }
 
 interface Particle {
@@ -163,7 +164,8 @@ export const ShowdownGame: React.FC<GameProps> = ({ playerBrawler, onFinish, onE
 
     const shootAt = (tx: number, ty: number, isSuper = false) => {
       const now = Date.now();
-      if (!isSuper && now - lastShot.current < 500) return;
+      const fireRate = playerBrawler.stats.fireRate || 400;
+      if (!isSuper && now - lastShot.current < fireRate) return;
       if (isSuper && superChargeRef.current < 100) return;
       
       if (!isSuper) lastShot.current = now;
@@ -173,16 +175,41 @@ export const ShowdownGame: React.FC<GameProps> = ({ playerBrawler, onFinish, onE
 
       const angle = Math.atan2(ty - player.y, tx - player.x);
       const cubeBonus = 1 + player.powerCubes * 0.1;
-      
-      projectiles.push({
-        x: player.x,
-        y: player.y,
-        vx: Math.cos(angle) * (isSuper ? 15 : 12),
-        vy: Math.sin(angle) * (isSuper ? 15 : 12),
-        damage: (isSuper ? playerBrawler.stats.damage * 2.5 : playerBrawler.stats.damage) * cubeBonus,
-        team: 'player',
-        isSuper
-      });
+      const pType = isSuper ? 'normal' : (playerBrawler.stats.projectileType || 'normal');
+      const baseDamage = (isSuper ? playerBrawler.stats.damage * 2.5 : playerBrawler.stats.damage) * cubeBonus;
+
+      if (pType === 'fan') {
+         [-0.2, 0, 0.2].forEach(offset => {
+           projectiles.push({
+             x: player.x, y: player.y,
+             vx: Math.cos(angle + offset) * 12, vy: Math.sin(angle + offset) * 12,
+             damage: baseDamage, team: 'player', isSuper
+           });
+         });
+      } else if (pType === 'burst') {
+         for (let i=0; i<3; i++) {
+           setTimeout(() => {
+             projectiles.push({
+               x: player.x, y: player.y,
+               vx: Math.cos(angle) * 12, vy: Math.sin(angle) * 12,
+               damage: baseDamage, team: 'player', isSuper
+             });
+           }, i * 150);
+         }
+      } else if (pType === 'big_slow') {
+         projectiles.push({
+             x: player.x, y: player.y,
+             vx: Math.cos(angle) * 6, vy: Math.sin(angle) * 6,
+             damage: baseDamage * 2, team: 'player', isSuper,
+             radius: 20
+         });
+      } else {
+         projectiles.push({
+             x: player.x, y: player.y,
+             vx: Math.cos(angle) * 12, vy: Math.sin(angle) * 12,
+             damage: baseDamage, team: 'player', isSuper
+         });
+      }
 
       // Recoil particles
       for (let i = 0; i < 5; i++) {
@@ -331,11 +358,12 @@ export const ShowdownGame: React.FC<GameProps> = ({ playerBrawler, onFinish, onE
         }
 
         if (p.team === 'player') {
+          const projRad = p.radius || (p.isSuper ? 12 : 8);
           // Hit enemies
           enemies.forEach(e => {
             if (e.hp <= 0) return;
             const dist = Math.hypot(p.x - e.x, p.y - e.y);
-            if (dist < e.radius + 10) {
+            if (dist < e.radius + projRad) {
               e.hp -= p.damage;
               if (!p.isSuper) setSuperCharge(prev => Math.min(100, prev + 15));
               projectiles.splice(i, 1);
@@ -351,7 +379,7 @@ export const ShowdownGame: React.FC<GameProps> = ({ playerBrawler, onFinish, onE
           boxes.forEach((b, idx) => {
             if (b.hp <= 0) return;
             const dist = Math.hypot(p.x - b.x, p.y - b.y);
-            if (dist < b.radius + 10) {
+            if (dist < b.radius + projRad) {
               b.hp -= p.damage;
               projectiles.splice(i, 1);
               if (b.hp <= 0) {
@@ -508,9 +536,10 @@ export const ShowdownGame: React.FC<GameProps> = ({ playerBrawler, onFinish, onE
 
       // Projectiles
       projectiles.forEach(p => {
+        const pr = p.radius || (p.isSuper ? 12 : 8);
         ctx.fillStyle = p.isSuper ? '#fbbf24' : (p.team === 'player' ? '#fff' : '#ef4444');
         ctx.beginPath();
-        ctx.arc(p.x, p.y, p.isSuper ? 12 : 8, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, pr, 0, Math.PI * 2);
         ctx.fill();
         if (p.isSuper) {
           ctx.shadowBlur = 15;

@@ -13,7 +13,16 @@ export interface Brawler {
     damage: number;
     speed: number;
     range: number;
+    projectileType?: 'normal' | 'fan' | 'burst' | 'big_slow';
+    fireRate?: number;
   };
+}
+
+export interface CustomBrawlerStats {
+  hpLevel: number;
+  damageLevel: number;
+  speedLevel: number;
+  fireRateLevel: number;
 }
 
 export interface UserState {
@@ -25,6 +34,9 @@ export interface UserState {
   trophies: number;
   claimedMilestones: number[];
   winStreak: number;
+  brawlBallWins: number;
+  customBrawlerName?: string;
+  customBrawlerStats?: CustomBrawlerStats;
 }
 
 export type GameMode = 'Noqueo' | 'Supervivencia' | 'Atrapagemas' | 'Balón Brawl';

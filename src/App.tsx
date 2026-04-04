@@ -20,6 +20,7 @@ import { GameModesView } from './components/views/GameModesView';
 
 // Modals
 import { BrawlerInfoModal } from './components/modals/BrawlerInfoModal';
+import { CustomBrawlerModal } from './components/modals/CustomBrawlerModal';
 import { MatchResultModal } from './components/modals/MatchResultModal';
 import { StarrDropModal } from './components/modals/StarrDropModal';
 
@@ -43,7 +44,11 @@ export default function App() {
     deductDailyDrop,
     addReward,
     setSelectedBrawlerId,
-    setUser
+    setUser,
+    updateBrawlBallWin,
+    customBrawler,
+    updateCustomBrawlerName,
+    upgradeCustomBrawlerStat
   } = useUser();
 
   useEffect(() => {
@@ -70,16 +75,20 @@ export default function App() {
   const [lastRank, setLastRank] = useState<number | null>(null);
   const [rewards, setRewards] = useState<{ trophies: number, drops: number, credits: number } | null>(null);
   const [showBrawlerInfo, setShowBrawlerInfo] = useState<Brawler | null>(null);
+  const [showCustomBrawlerEdit, setShowCustomBrawlerEdit] = useState(false);
 
-  const filteredBrawlers = BRAWLERS.filter(b => 
+  const filteredBrawlers = [customBrawler, ...BRAWLERS].filter(b => 
     b.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const selectedBrawler = BRAWLERS.find(b => b.id === user.selectedBrawlerId) || BRAWLERS[0];
+  const selectedBrawler = [customBrawler, ...BRAWLERS].find(b => b.id === user.selectedBrawlerId) || BRAWLERS[0];
 
   const onGameWin = (kills: number = 0) => {
     setLastRank(null);
     setMatchResult('win');
+    if (selectedMode === 'Balón Brawl') {
+      updateBrawlBallWin();
+    }
     const r = awardWinTrophies(kills);
     setRewards(r);
     setView('home');
@@ -145,6 +154,7 @@ export default function App() {
               onBack={() => setView('home')}
               onShowBrawlerInfo={setShowBrawlerInfo}
               onUnlock={unlockBrawler}
+              onEditCustomBrawler={() => setShowCustomBrawlerEdit(true)}
               onSelect={(b) => {
                 setSelectedBrawlerId(b.id);
                 setView('home');
@@ -183,6 +193,7 @@ export default function App() {
           {view === 'game' && selectedMode === 'Balón Brawl' && (
             <BrawlBallGame 
               playerBrawler={selectedBrawler}
+              brawlBallWins={user.brawlBallWins || 0}
               onWin={onGameWin}
               onLoss={onGameLoss}
               onExit={() => setView('home')}
@@ -195,6 +206,17 @@ export default function App() {
         brawler={showBrawlerInfo} 
         onClose={() => setShowBrawlerInfo(null)} 
       />
+
+      <AnimatePresence>
+        {showCustomBrawlerEdit && (
+          <CustomBrawlerModal
+            user={user}
+            onClose={() => setShowCustomBrawlerEdit(false)}
+            onUpdateName={updateCustomBrawlerName}
+            onUpgradeStat={upgradeCustomBrawlerStat}
+          />
+        )}
+      </AnimatePresence>
 
       <MatchResultModal 
         matchResult={matchResult}
